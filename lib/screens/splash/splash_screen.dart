@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pari_enterprises_delivery/screens/home/home_screen.dart';
 import 'package:pari_enterprises_delivery/screens/login/login_screen.dart';
+import 'package:pari_enterprises_delivery/shared_pref/shared_pref.dart';
 import 'package:pari_enterprises_delivery/utils/animation_helper/animated_page_route.dart';
 import 'package:pari_enterprises_delivery/utils/app_colors.dart';
 
@@ -40,12 +42,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    _timer = Timer(const Duration(milliseconds: 2500), () {
+    _timer = Timer(const Duration(milliseconds: 2500), () async {
       if (!mounted) return;
 
-      Navigator.of(
+      final isLoggedIn = await SharedPref.isLoggedIn();
+
+      Navigator.pushReplacement(
         context,
-      ).pushReplacement(AnimatedPageRoute(page: const LoginScreen()));
+        AnimatedPageRoute(
+          page: isLoggedIn ? const HomeScreen() : const LoginScreen(),
+        ),
+      );
     });
   }
 

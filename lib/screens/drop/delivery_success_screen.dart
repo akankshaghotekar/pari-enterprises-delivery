@@ -5,7 +5,13 @@ import 'package:pari_enterprises_delivery/utils/common/common_app_bar.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_bottom_nav.dart';
 
 class DeliverySuccessScreen extends StatelessWidget {
-  const DeliverySuccessScreen({super.key});
+  final String billNo;
+  final String deliveryDate;
+  const DeliverySuccessScreen({
+    super.key,
+    required this.billNo,
+    required this.deliveryDate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -70,18 +76,18 @@ class DeliverySuccessScreen extends StatelessWidget {
                           fontSize: 14.sp,
                           color: AppColor.textLight,
                         ),
-                        children: const [
-                          TextSpan(text: "Your Order "),
+                        children: [
+                          const TextSpan(text: "Your Order "),
                           TextSpan(
-                            text: "WO# 004-00-1209",
+                            text: billNo,
                             style: TextStyle(
                               color: AppColor.primaryBlue,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          TextSpan(text: "\nhas been Delivered On "),
+                          const TextSpan(text: "\nhas been Delivered On "),
                           TextSpan(
-                            text: "20-11-2022.",
+                            text: deliveryDate,
                             style: TextStyle(
                               color: AppColor.primaryBlue,
                               fontWeight: FontWeight.w600,

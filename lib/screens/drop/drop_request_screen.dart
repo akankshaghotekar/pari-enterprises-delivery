@@ -1,13 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pari_enterprises_delivery/api/api_service.dart';
+import 'package:pari_enterprises_delivery/model/drop_request_model.dart';
 import 'package:pari_enterprises_delivery/screens/drop/confirm_delivery_screen.dart';
+import 'package:pari_enterprises_delivery/shared_pref/shared_pref.dart';
 import 'package:pari_enterprises_delivery/utils/animation_helper/animated_page_route.dart';
 import 'package:pari_enterprises_delivery/utils/app_colors.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_app_bar.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_bottom_nav.dart';
 
-class DropRequestScreen extends StatelessWidget {
+class DropRequestScreen extends StatefulWidget {
   const DropRequestScreen({super.key});
+
+  @override
+  State<DropRequestScreen> createState() => _DropRequestScreenState();
+}
+
+class _DropRequestScreenState extends State<DropRequestScreen> {
+  List<DropRequestModel> dropRequests = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDropRequests();
+  }
+
+  Future<void> _fetchDropRequests() async {
+    final userSrNo = await SharedPref.getUserSrNo();
+
+    if (userSrNo == null || userSrNo.isEmpty) {
+      setState(() => isLoading = false);
+      return;
+    }
+
+    final res = await ApiService.getDropRequests(userSrNo: userSrNo);
+
+    if (!mounted) return;
+
+    setState(() {
+      dropRequests = res;
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,27 +84,38 @@ class DropRequestScreen extends StatelessWidget {
               SizedBox(height: 20.h),
 
               /// DROP CARDS
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    AnimatedPageRoute(page: const ConfirmDeliveryScreen()),
-                  );
-                },
-                child: _dropCard(
-                  status: "Out For Delivery",
-                  statusBg: AppColor.primaryBlue,
-                  statusText: AppColor.white,
-                ),
-              ),
+              isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: dropRequests.length,
+                      separatorBuilder: (_, __) => SizedBox(height: 14.h),
+                      itemBuilder: (context, index) {
+                        final drop = dropRequests[index];
 
-              SizedBox(height: 14.h),
-
-              _dropCard(
-                status: "Pending",
-                statusBg: AppColor.orange.withOpacity(0.9),
-                statusText: AppColor.white,
-              ),
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              AnimatedPageRoute(
+                                page: ConfirmDeliveryScreen(
+                                  billSrNo: drop.billSrNo,
+                                ),
+                              ),
+                            );
+                          },
+                          child: _dropCard(
+                            drop: drop,
+                            status: index % 2 == 0 ? "Delivered" : "Pending",
+                            statusBg: index % 2 == 0
+                                ? AppColor.locationGreen
+                                : AppColor.orange.withOpacity(0.9),
+                            statusText: AppColor.white,
+                          ),
+                        );
+                      },
+                    ),
             ],
           ),
         ),
@@ -99,10 +145,14 @@ class DropRequestScreen extends StatelessWidget {
 
   // ───────── DROP CARD ─────────
   Widget _dropCard({
+    required DropRequestModel drop,
     required String status,
     required Color statusBg,
     required Color statusText,
   }) {
+    final address =
+        "${drop.addressLine1 ?? ""}, ${drop.addressLine2 ?? ""}, ${drop.city ?? ""}";
+
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
@@ -119,12 +169,11 @@ class DropRequestScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// HEADER
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Order: #123456",
+                "Order: ${drop.billNo}",
                 style: TextStyle(
                   fontSize: 18.sp,
                   fontWeight: FontWeight.w600,
@@ -148,13 +197,14 @@ class DropRequestScreen extends StatelessWidget {
               ),
             ],
           ),
-
           SizedBox(height: 10.h),
-
-          _infoRow("Name", "xyz"),
-          _infoRow("Address", "45, Green Avenue, Near City Center ....."),
-          _infoRow("Price", "Rs. 250.00"),
-          _infoRow("Delivered Date", "Deliver by 5:00 PM Today"),
+          _infoRow("Bill Date", drop.billDate),
+          _infoRow("Name", drop.clientName ?? "-"),
+          _infoRow("Mobile", drop.mobile ?? "-"),
+          _infoRow("Address", address),
+          _infoRow("Pincode", drop.pincode ?? "-"),
+          _infoRow("Price", "Rs. ${drop.amount}"),
+          _infoRow("Delivery Date", drop.deliveryDate),
         ],
       ),
     );

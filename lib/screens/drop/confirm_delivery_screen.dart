@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pari_enterprises_delivery/api/api_service.dart';
 import 'package:pari_enterprises_delivery/screens/drop/delivery_success_screen.dart';
 import 'package:pari_enterprises_delivery/utils/animation_helper/animated_page_route.dart';
 import 'package:pari_enterprises_delivery/utils/app_colors.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_app_bar.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_bottom_nav.dart';
 
-class ConfirmDeliveryScreen extends StatelessWidget {
-  const ConfirmDeliveryScreen({super.key});
+class ConfirmDeliveryScreen extends StatefulWidget {
+  final String billSrNo;
+  const ConfirmDeliveryScreen({super.key, required this.billSrNo});
 
+  @override
+  State<ConfirmDeliveryScreen> createState() => _ConfirmDeliveryScreenState();
+}
+
+class _ConfirmDeliveryScreenState extends State<ConfirmDeliveryScreen> {
+  bool isLoading = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,12 +138,38 @@ class ConfirmDeliveryScreen extends StatelessWidget {
 
               /// MARK AS DELIVERED BUTTON
               GestureDetector(
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    AnimatedPageRoute(page: const DeliverySuccessScreen()),
-                  );
-                },
+                onTap: isLoading
+                    ? null
+                    : () async {
+                        setState(() => isLoading = true);
+
+                        final response = await ApiService.markAsDelivered(
+                          billSrNo: widget.billSrNo,
+                        );
+
+                        if (!mounted) return;
+
+                        setState(() => isLoading = false);
+
+                        if (response != null) {
+                          Navigator.pushReplacement(
+                            context,
+                            AnimatedPageRoute(
+                              page: DeliverySuccessScreen(
+                                billNo: response.billNo,
+                                deliveryDate: response.deliveryDate,
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Failed to mark as delivered"),
+                            ),
+                          );
+                        }
+                      },
+
                 child: _markDeliveredButton(),
               ),
 
@@ -220,14 +254,23 @@ class ConfirmDeliveryScreen extends StatelessWidget {
         color: AppColor.primaryBlue,
         borderRadius: BorderRadius.circular(10.r),
       ),
-      child: Text(
-        "Mark As Delivered",
-        style: TextStyle(
-          fontSize: 18.sp,
-          fontWeight: FontWeight.w600,
-          color: AppColor.white,
-        ),
-      ),
+      child: isLoading
+          ? SizedBox(
+              height: 22.h,
+              width: 22.h,
+              child: const CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Text(
+              "Mark As Delivered",
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColor.white,
+              ),
+            ),
     );
   }
 

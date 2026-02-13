@@ -1,12 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pari_enterprises_delivery/api/api_service.dart';
+import 'package:pari_enterprises_delivery/model/pickup_request_model.dart';
+import 'package:pari_enterprises_delivery/screens/pickup/pickup_category_screen.dart';
 import 'package:pari_enterprises_delivery/screens/pickup/pickup_details_screen.dart';
+import 'package:pari_enterprises_delivery/screens/pickup/view_order_screen.dart';
+import 'package:pari_enterprises_delivery/shared_pref/shared_pref.dart';
 import 'package:pari_enterprises_delivery/utils/app_colors.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_app_bar.dart';
 import 'package:pari_enterprises_delivery/utils/common/common_bottom_nav.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class PickupRequestScreen extends StatelessWidget {
+class PickupRequestScreen extends StatefulWidget {
   const PickupRequestScreen({super.key});
+
+  @override
+  State<PickupRequestScreen> createState() => _PickupRequestScreenState();
+}
+
+class _PickupRequestScreenState extends State<PickupRequestScreen> {
+  Future<List<PickupRequestModel>>? _pickupFuture;
+  final TextEditingController _searchController = TextEditingController();
+
+  List<PickupRequestModel> _allPickups = [];
+  List<PickupRequestModel> _filteredPickups = [];
+
+  String _userName = "";
+  String _userSrNo = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _openDialer(String mobile) {
+    final uri = Uri.parse("tel:$mobile");
+    launchUrl(uri);
+  }
+
+  Future<void> _loadData() async {
+    final name = await SharedPref.getUserName();
+    final srNo = await SharedPref.getUserSrNo();
+
+    final future = ApiService.getPickupRequests(userSrNo: srNo ?? "");
+
+    setState(() {
+      _userName = name ?? "";
+      _userSrNo = srNo ?? "";
+      _pickupFuture = future;
+    });
+
+    final data = await future;
+    if (mounted) {
+      setState(() {
+        _allPickups = data;
+        _filteredPickups = data;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,24 +99,62 @@ class PickupRequestScreen extends StatelessWidget {
                 children: [
                   Expanded(child: _searchField()),
                   SizedBox(width: 12.w),
-                  _addButton(),
+                  GestureDetector(onTap: () {}, child: _addButton()),
                 ],
               ),
 
               SizedBox(height: 20.h),
 
               /// PICKUP CARD
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PickupDetailsScreen(),
+              _pickupFuture == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : FutureBuilder<List<PickupRequestModel>>(
+                      future: _pickupFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Center(
+                            child: Text("No pickup requests found"),
+                          );
+                        }
+
+                        final pickups = _filteredPickups;
+
+                        return Column(
+                          children: pickups.map((item) {
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PickupCategoryScreen(
+                                      pickupSrNo: item.pickupSrNo,
+                                      customerUserSrNo: item.userSrNo,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _pickupCard(
+                                name: item.clientName ?? "Unknown Client",
+                                mobile: item.mobile,
+                                orderId: item.pickupSrNo,
+                                services: item.services,
+                                date: item.pickupDate,
+                                time: item.pickupTime,
+                                orderGenerated: item.orderGenerated,
+                                pickupSrNo: item.pickupSrNo,
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
-                  );
-                },
-                child: _pickupCard(),
-              ),
             ],
           ),
         ),
@@ -75,6 +165,33 @@ class PickupRequestScreen extends StatelessWidget {
   // ───────── SEARCH FIELD ─────────
   Widget _searchField() {
     return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        final query = value.toLowerCase().trim();
+
+        setState(() {
+          _filteredPickups = _allPickups.where((item) {
+            final name = item.clientName?.toLowerCase() ?? "";
+            // final orderId = item.pickupSrNo.toLowerCase();
+
+            final services = item.services
+                .toLowerCase()
+                .replaceAll('\n', ' ')
+                .replaceAll(',', ' ');
+
+            final date = item.pickupDate
+                .toLowerCase()
+                .replaceAll('-', ' ')
+                .replaceAll(',', ' ');
+
+            return name.contains(query) ||
+                // orderId.contains(query) ||
+                services.contains(query) ||
+                date.contains(query);
+          }).toList();
+        });
+      },
+
       decoration: InputDecoration(
         hintText: "Search Name or Order.....",
         hintStyle: TextStyle(fontSize: 16.sp, color: AppColor.hintText),
@@ -107,8 +224,18 @@ class PickupRequestScreen extends StatelessWidget {
   }
 
   // ───────── PICKUP CARD ─────────
-  Widget _pickupCard() {
+  Widget _pickupCard({
+    required String name,
+    required String orderId,
+    required String services,
+    required String date,
+    required String time,
+    required int orderGenerated,
+    required String pickupSrNo,
+    String? mobile,
+  }) {
     return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: AppColor.white,
@@ -124,22 +251,85 @@ class PickupRequestScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// NAME
-          Text(
-            "Rohan Gupta",
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w700,
-              color: AppColor.primaryBlue,
-            ),
+          /// USER NAME (FROM SHARED PREF)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColor.primaryBlue,
+                  ),
+                ),
+              ),
+
+              if (mobile != null && mobile!.isNotEmpty)
+                GestureDetector(
+                  onTap: () => _openDialer(mobile!),
+                  child: Container(
+                    height: 36.h,
+                    width: 36.h,
+                    decoration: BoxDecoration(
+                      color: AppColor.primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Icon(
+                      Icons.call,
+                      color: AppColor.primaryBlue,
+                      size: 20.sp,
+                    ),
+                  ),
+                ),
+            ],
           ),
 
           SizedBox(height: 8.h),
+          _infoRow(
+            "Mobile:",
+            (mobile != null && mobile!.isNotEmpty) ? mobile! : "N/A",
+          ),
 
-          _infoRow("Order ID:", "123456"),
-          _infoRow("Items:", "6 (Wash and Iron)"),
-          _infoRow("Price -", "Rs. 250.00"),
-          _infoRow("Date:", "15-01-2026"),
+          _infoRow("Order ID:", orderId),
+          _infoRow("Services:", services),
+          _infoRow("Pickup Time:", time),
+          _infoRow("Date:", date),
+          if (orderGenerated == 1) ...[
+            SizedBox(height: 12.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ViewOrderScreen(pickupSrNo: pickupSrNo),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColor.primaryBlue,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Text(
+                    "View Order",
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColor.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

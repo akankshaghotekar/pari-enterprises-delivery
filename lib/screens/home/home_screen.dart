@@ -46,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen>
         child: FadeTransition(
           opacity: _fade,
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -59,19 +58,43 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
 
                 SizedBox(height: 18.h),
-                _statsCard(),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 12.h,
+                  ),
+                  child: _statsCard(),
+                ),
                 SizedBox(height: 22.h),
-                Text(
-                  "Recent Order",
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w600,
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 12.h,
+                  ),
+                  child: Text(
+                    "Recent Order",
+                    style: TextStyle(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 SizedBox(height: 12.h),
-                _orderCardProcessed(),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 12.h,
+                  ),
+                  child: _orderCardProcessed(),
+                ),
                 SizedBox(height: 12.h),
-                _orderCardActive(),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 12.h,
+                  ),
+                  child: _orderCardActive(),
+                ),
               ],
             ),
           ),
@@ -112,23 +135,23 @@ class _HomeScreenState extends State<HomeScreen>
   // ───────── STATS CARD ─────────
   Widget _statsCard() {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 14.h),
+      padding: EdgeInsets.symmetric(vertical: 18.h),
       decoration: BoxDecoration(
-        color: AppColor.white,
-        borderRadius: BorderRadius.circular(14.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.09),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: LinearGradient(
+          colors: [
+            AppColor.primaryBlue.withOpacity(0.95),
+            AppColor.primaryBlue.withOpacity(0.75),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18.r),
       ),
       child: Row(
         children: [
-          _stat("15", "Total Pickup\nRequest"),
+          _stat("15", "Pickup"),
           _verticalDivider(),
-          _stat("10", "Total Drop\nRequest"),
+          _stat("10", "Drop"),
           _verticalDivider(),
           _stat("0", "Failed"),
         ],
@@ -142,13 +165,17 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Text(
             value,
-            style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColor.white,
+            ),
           ),
           SizedBox(height: 6.h),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13.sp, color: AppColor.textLight),
+            style: TextStyle(fontSize: 13.sp, color: AppColor.white),
           ),
         ],
       ),
@@ -159,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       height: 60.h,
       width: 2.w,
-      color: AppColor.primaryBlue.withOpacity(0.5),
+      color: AppColor.white.withOpacity(0.5),
     );
   }
 
@@ -175,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen>
       pickupSub: "Georgia, Batumi",
       dropTitle: "5 Noe Zhordania St",
       dropSub: "Georgia, Batumi",
+      borderColor: AppColor.primaryBlue,
     );
   }
 
@@ -189,6 +217,7 @@ class _HomeScreenState extends State<HomeScreen>
       pickupSub: "Area name etc",
       dropTitle: "Customer address",
       dropSub: "Same as above",
+      borderColor: AppColor.primaryBlue,
     );
   }
 
@@ -202,12 +231,14 @@ class _HomeScreenState extends State<HomeScreen>
     required String pickupSub,
     required String dropTitle,
     required String dropSub,
+    required Color borderColor,
   }) {
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: AppColor.white,
         borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
